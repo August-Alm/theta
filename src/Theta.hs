@@ -11,6 +11,7 @@ module Theta
 
 import Types
 import Env
+import Debug.Trace (trace)
 
 eqTerm :: Env -> TermH -> TermH -> Bool
 eqTerm env t u =
@@ -140,7 +141,7 @@ evType env typ =
   case typ of
   TVar x -> case lookupType x env of
     Just t -> t
-    Nothing -> error "unbound variable"
+    Nothing -> trace (show x) $ error "unbound variable"
   Thet x t ->
     ThetH x (\v -> evTerm (bindTerm x v env) t)
   FLam x t ->
