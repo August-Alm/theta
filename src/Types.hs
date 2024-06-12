@@ -30,10 +30,10 @@ instance Show Term where
 
 -- | A type in Theta Calculus.
 data Type
-  = TVar Name  -- X
-  | Thet Name Term  -- θx.t
-  | FLam Name Type  -- ΛX.T
-  | VLam Name Type  -- Λx.T
+  = TVar !Name  -- X
+  | Thet !Name !Term  -- θx.t
+  | FLam !Name !Type  -- ΛX.T
+  | VLam !Name !Type  -- Λx.T
   | FApp !Type !Type  -- T T'
   | VApp !Type !Term  -- T t
   | TAnn !Type !Kind  -- T : κ
@@ -51,19 +51,19 @@ instance Show Kind where
 
 -- | Higher-order representation of terms.
 data TermH
-  = VarH Name
-  | LamH Name !(TermH -> TermH)
-  | PLamH Name !(TypeH -> TermH)
+  = VarH !Name
+  | LamH !Name !(TermH -> TermH)
+  | PLamH !Name !(TypeH -> TermH)
   | AppH !TermH !TermH
   | PAppH !TermH !TypeH
   | AnnH !TermH !TypeH
 
 -- | Higher-order representation of types.
 data TypeH
-  = TVarH Name
-  | ThetH Name !(TermH -> TermH)
-  | FLamH Name !(TypeH -> TypeH)
-  | VLamH Name !(TermH -> TypeH)
+  = TVarH !Name
+  | ThetH !Name !(TermH -> TermH)
+  | FLamH !Name !(TypeH -> TypeH)
+  | VLamH !Name !(TermH -> TypeH)
   | FAppH !TypeH !TypeH
   | VAppH !TypeH !TermH
   | TAnnH !TypeH !KindH
@@ -71,12 +71,12 @@ data TypeH
 -- | Higher-order representation of kinds.
 data KindH
   = KStarH
-  | KThetH Name !(TypeH -> TypeH)
+  | KThetH !Name !(TypeH -> TypeH)
 
 
 showTerm :: Term -> String
-showTerm t =
-  case t of
+showTerm trm =
+  case trm of
   Var x -> unpack x
   Lam x t -> "λ" ++ unpack x ++ "." ++ showTerm t
   PLam x t -> "λ" ++ unpack x ++ "." ++ showTerm t

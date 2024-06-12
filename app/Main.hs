@@ -39,8 +39,8 @@ nat = FLam f (FLam g (FLam a (FApp (FApp hom fa) ga)))
     ga = FApp (TVar g) (TVar a)
 
 church :: Type
-church = (FApp nat end) 
---church = FApp (FApp nat end) end
+--church = FApp nat end 
+church = FApp (FApp nat end) end
 
 idlam :: Term
 idlam = PLam a (Lam x (Var x))

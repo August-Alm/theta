@@ -1,5 +1,3 @@
-{-# language BlockArguments, BangPatterns #-}
-
 module Theta
 ( Types.Term (..)
 , Types.Type (..)
@@ -13,7 +11,6 @@ module Theta
 
 import Types
 import Env
-import Debug.Trace (trace)
 
 eqTerm :: Env -> TermH -> TermH -> Bool
 eqTerm env t u =
@@ -47,7 +44,6 @@ eqTerm env t u =
 
 eqType :: Env -> TypeH -> TypeH -> Bool
 eqType env t u =
-  let t = debugPrintType env t in
   case (t, u) of
   (TVarH x, TVarH y) -> x == y
   (ThetH x f, ThetH _ g) ->
@@ -62,11 +58,11 @@ eqType env t u =
   (FLamH x f, FLamH _ g) ->
     eqType env' (f xt) (g xt)
       where (_, xt, env') = bindFreshType x env
-  (FLamH x f, u) ->
-    eqType env' (f xt) (FAppH u xt)
+  (FLamH x f, a) ->
+    eqType env' (f xt) (FAppH a xt)
       where (_, xt, env') = bindFreshType x env
-  (t, FLamH y g) ->
-    eqType env' (FAppH t yv) (g yv)
+  (a, FLamH y g) ->
+    eqType env' (FAppH a yv) (g yv)
     where (_, yv, env') = bindFreshType y env
   (VLamH x f, VLamH _ g) ->
     eqType env' (f xv) (g xv)
@@ -79,8 +75,8 @@ eqType env t u =
       where (_, yv, env') = bindFreshTerm y env
   (FAppH f a, FAppH g b) ->
     eqType env f g && eqType env a b
-  (VAppH f t, VAppH g u) ->
-    eqType env f g && eqTerm env t u
+  (VAppH f r, VAppH g s) ->
+    eqType env f g && eqTerm env r s
   (TAnnH f k, TAnnH g l) ->
     eqType env f g && eqKind env k l
   _ -> False
@@ -100,56 +96,51 @@ eqKind env k l =
       where (_, yt, env') = bindFreshType y env
 
 evTerm :: Env -> Term -> TermH
-evTerm env t =
-  case t of
+evTerm env trm =
+  case trm of
   Var x -> case lookupTerm x env of
     Just t -> t
-    Nothing -> error "unbound variable" --VarH x
+    Nothing -> error "unbound variable"
   Lam x t ->
     LamH x (\v -> evTerm (bindTerm x v env) t)
   App t u ->
     case (evTerm env t, evTerm env u) of
-    (LamH _ t, u) -> t u
-    (t, u) -> AppH t u
-  PLam x t' ->
-    PLamH x (\v -> evTerm (bindType x v env) t')
+    (LamH _ f, v) -> f v
+    (f, v) -> AppH f v
+  PLam x t ->
+    PLamH x (\v -> evTerm (bindType x v env) t)
   PApp t a ->
     case (evTerm env t, evType env a) of
-    (PLamH _ t, u) -> t u
-    (t, u) -> PAppH t u
+    (PLamH _ f, u) -> f u
+    (f, u) -> PAppH f u
   Ann t a ->
     case (evTerm env t, evType env a) of
-    (AnnH t b, a) | eqType env a b -> t
-    (LamH _ f, VLamH x a) ->
+    (AnnH s b, a') | eqType env a' b -> s
+    (tv, ThetH _ u) -> u tv
+    (LamH _ f, VLamH x b) ->
       LamH x (\v ->
-        case a v of
+        case b v of
         ThetH _ u -> u (f v)
-        av -> AnnH (f v) av)
-    (t, VLamH x a) ->
+        bv -> AnnH (f v) bv)
+    (b, VLamH x f) ->
       LamH x (\v ->
-        case a v of
-        ThetH _ u -> u t
-        av -> AnnH (AppH t v) av)
-    (PLamH _ t, FLamH x a) ->
+        case f v of
+        ThetH _ u -> u (AppH b v)
+        fv -> AnnH (AppH b v) fv)
+    (PLamH _ f, FLamH x b) ->
       PLamH x (\v ->
-        case a v of
-        ThetH _ u -> u (t v)
-        av -> AnnH (t v) av)
-    (PLamH _ t, a) -> AnnH (t a) a
-    (t, a) -> AnnH t a
-
-debugPrintTerm :: Env -> TermH -> TermH
-debugPrintTerm env t = trace (show . quTerm env $ t) t
-
-debugPrintType :: Env -> TypeH -> TypeH
-debugPrintType env t = trace (show . quType env $ t) t
+        case b v of
+        ThetH _ u -> u (f v)
+        bv -> AnnH (f v) bv)
+    (PLamH _ r, b) -> AnnH (r b) b
+    (r, b) -> AnnH r b
 
 evType :: Env -> Type -> TypeH
-evType env a =
-  case a of
+evType env typ =
+  case typ of
   TVar x -> case lookupType x env of
     Just t -> t
-    Nothing -> error "unbound variable" --TVarH x
+    Nothing -> error "unbound variable"
   Thet x t ->
     ThetH x (\v -> evTerm (bindTerm x v env) t)
   FLam x t ->
@@ -157,27 +148,24 @@ evType env a =
   VLam x t ->
     VLamH x (\v -> evType (bindTerm x v env) t)
   FApp t u ->
-    --let t' = debugPrintType env $ evType env t in
-    --let u' = debugPrintType env $ evType env u in
-    --case (t', u') of
     case (evType env t, evType env u) of
-    (FLamH _ t, u) -> t u
-    (t, u) -> FAppH t u
+    (FLamH _ f, a) -> f a
+    (f, a) -> FAppH f a
   VApp t u ->
     case (evType env t, evTerm env u) of
-    (VLamH _ t, u) -> t u
-    (ThetH x t, u) ->
+    (VLamH _ f, v) -> f v
+    (ThetH x f, b) ->
       ThetH x (\v ->
-        case t v of
-        LamH _ f -> f u
-        tv -> AppH tv u)
-    (t, u) -> VAppH t u
-  TAnn t k ->
-    case (evType env t, evKind env k) of
-    (TAnnH t l, k) | eqKind env k l -> t
+        case f v of
+        LamH _ fv -> fv b
+        fv -> AppH fv b)
+    (f, a) -> VAppH f a
+  TAnn a k ->
+    case (evType env a, evKind env k) of
+    (TAnnH t l, kv) | eqKind env kv l -> t
     (t, KThetH _ u) -> u t
     (ThetH x t, KStarH) -> ThetH x t
-    (t, k) -> TAnnH t k
+    (t, kv) -> TAnnH t kv
 
 evKind :: Env -> Kind -> KindH
 evKind env k =
@@ -187,25 +175,25 @@ evKind env k =
     KThetH x (\v -> evType (bindType x v env) t)
 
 quTerm :: Env -> TermH -> Term
-quTerm env t =
-  case t of
+quTerm env trm =
+  case trm of
   VarH x -> Var x
   LamH x f ->
     Lam x' (quTerm env' (f xv))
       where (x', xv, env') = bindFreshTerm x env
-  AppH t u ->
-    App (quTerm env t) (quTerm env u)
+  AppH f u ->
+    App (quTerm env f) (quTerm env u)
   PLamH x f ->
     PLam x' (quTerm env' (f xt))
       where (x', xt, env') = bindFreshType x env
-  PAppH t a ->
-    PApp (quTerm env t) (quType env a)
+  PAppH f a ->
+    PApp (quTerm env f) (quType env a)
   AnnH t a ->
     Ann (quTerm env t) (quType env a)
 
 quType :: Env -> TypeH -> Type
-quType env a =
-  case a of
+quType env typ =
+  case typ of
   TVarH x -> TVar x
   ThetH x f ->
     Thet x' (quTerm env' (f xv))

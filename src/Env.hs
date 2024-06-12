@@ -10,7 +10,7 @@ module Env
 ) where
 
 import Types
-import Data.Text.Short (pack, append)
+import Data.Text.Short (pack)
 import Data.Char (chr)
 import Data.List (findIndex)
 
@@ -24,9 +24,9 @@ indexToName :: Int -> Int -> Name
 indexToName shift idx = go idx []
   where
     go i acc =
-      if idx > 0
-      then go (i `div` 26) (pack [chr ((i - 1) `mod` 26 + shift)] : acc)
-      else foldl append mempty acc
+      if i > 0
+        then go (i `div` 26) (chr ((i - 1) `mod` 26 + shift) : acc)
+        else pack . reverse $ acc
 
 empty :: Env
 empty = Env { terms = [], types = [] }
