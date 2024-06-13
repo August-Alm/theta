@@ -7,7 +7,7 @@ import Theta
 starStar :: Kind
 starStar =
   KThet f (FLam x
-    (TAnn (FApp (TVar f) (TAnn (TVar x) KStar)) KStar))
+    (TAnn (FApp (TVar f 1) (TAnn (TVar x 0) KStar)) KStar))
       where
         f = name "F"
         x = name "X"
@@ -15,14 +15,14 @@ starStar =
 -- | "Any" type.
 -- @θt.t@
 any :: Type
-any = Thet t (Var t) where t = name "t"
+any = Thet t (Var t 0) where t = name "t"
 
 -- | Simple function type @A -> B@.
 -- @ΛA.ΛB.θf.λx.[(f [x : A]) : B]@
 hom :: Type
 hom =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f) (Ann (Var x) (TVar a))) (TVar b)))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) (TVar b 2)))))
     where
       a = name "A"
       b = name "B"
@@ -34,54 +34,55 @@ hom =
 map :: Type
 map =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f) (Ann (Var x) (TVar a))) bx))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) bx))))
       where
         a = name "A"
         x = name "x"
         b = name "B"
         f = name "f"
-        bx = VApp (TVar b) (Ann (Var x) (TVar a))
+        bx = VApp (TVar b 3) (Ann (Var x 0) (TVar a 3))
 
 -- | Forall type, aka @∀x.A.B@.
 -- @ΛA.ΛB.θt.λx.[t : (B [x : A])]@
 all :: Type
-all = FLam a (FLam b (Thet t (Lam x (Ann (Var t) bxa))))
+all = FLam a (FLam b (Thet t (Lam x (Ann (Var t 1) bxa))))
   where
     a = name "A"
     x = name "x"
     b = name "B"
     t = name "t"
-    bxa = VApp (TVar b) (Ann (Var x) (TVar a))
+    bxa = VApp (TVar b 2) (Ann (Var x 0) (TVar a 3))
 
 -- Polymorphic forall type, aka @∀X:κ.T@.
 -- @ΛT.θt.λX.[t : (T [X : κ])]@
 pol :: Kind -> Type
-pol k = FLam t (Thet t (PLam x (Ann (Var t) bxk)))
+pol k = FLam t (Thet s (PLam x (Ann (Var s 1) txk)))
   where
     t = name "T"
+    s = name "s"
     x = name "X"
-    bxk = FApp (TVar t) (TAnn (TVar x) k) 
+    txk = FApp (TVar t 2) (TAnn (TVar x 0) k) 
 
 -- | Very dependent (self-typed) function type.
 -- @ΛA.ΛB.θf.λx.[(f [x : A]) : ((B f) [x : A])]@
 ind :: Type
 ind =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f) (Ann (Var x) (TVar a))) (VApp bf xa)))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) (VApp bf xa)))))
     where
       a = name "A"
       b = name "B"
       f = name "f"
       x = name "x"
-      bf = VApp (TVar b) (Var f)
-      xa = Ann (Var x) (TVar a)
+      bf = VApp (TVar b 2) (Var f 1)
+      xa = Ann (Var x 0) (TVar a 3)
 
 -- | Dependent pairs, aka @Σx:A.B@.
 -- @ΛA.ΛB.θpar.(par λx.λy.λp.((p [x : A]) [y : (B [x : A])]))@
 sig :: Type
 sig =
   FLam a (FLam b (Thet par
-    (App (Var par) (Lam x (Lam y (Lam p (App (App (Var p) xa) yb)))))))
+    (App (Var par 0) (Lam x (Lam y (Lam p (App (App (Var p 0) xa) yb)))))))
       where
         a = name "A"
         b = name "B"
@@ -89,14 +90,14 @@ sig =
         x = name "x"
         y = name "y"
         p = name "p"
-        xa = Ann (Var x) (TVar a)
-        yb = Ann (Var y) (VApp (TVar b) xa)
+        xa = Ann (Var x 2) (TVar a 5)
+        yb = Ann (Var y 1) (VApp (TVar b 5) xa)
 
 -- Examples.
 
 -- | Functorial endomorphism type.
 end :: Type
-end = FLam x (FApp (FApp hom (TVar x)) (TVar x))
+end = FLam x (FApp (FApp hom (TVar x 0)) (TVar x 0))
   where
     x = name "X"
 
@@ -107,21 +108,21 @@ nat = FLam f (FLam g (FLam a (FApp (FApp hom fa) ga)))
     f = name "F"
     g = name "G"
     a = name "A"
-    fa = FApp (TVar f) (TVar a)
-    ga = FApp (TVar g) (TVar a)
+    fa = FApp (TVar f 2) (TVar a 0)
+    ga = FApp (TVar g 1) (TVar a 0)
 
 -- | Church numerals type.
 church :: Type
 church = FApp (FApp nat end) end
 
 idlam :: Term
-idlam = PLam a (Lam x (Var x))
+idlam = PLam a (Lam x (Var x 0))
   where
     a = name "A"
     x = name "x"
 
 two :: Term
-two = PLam a (Lam s (Lam z (App (Var s) (App (Var s) (Var z)))))
+two = PLam a (Lam s (Lam z (App (Var s 1) (App (Var s 1) (Var z 0)))))
   where
     a = name "A"
     s = name "s"
@@ -130,13 +131,13 @@ two = PLam a (Lam s (Lam z (App (Var s) (App (Var s) (Var z)))))
 report :: Term -> Type -> IO ()
 report trm typ =
   case check trm typ of
-    Left t -> do
-      putStrLn "ok!"
-      putStrLn $ "normalized term = " ++ show t
-    Right (t, t') -> do
-      putStrLn "bad!"
-      putStrLn $ "normalized term = " ++ show t
-      putStrLn $ "annotated term = " ++ show t'
+  Left t -> do
+    putStrLn "ok!"
+    putStrLn $ "normalized term = " ++ show t
+  Right (t, t') -> do
+    putStrLn "bad!"
+    putStrLn $ "normalized term = " ++ show t
+    putStrLn $ "annotated term = " ++ show t'
 
 
 main :: IO ()
