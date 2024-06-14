@@ -19,10 +19,12 @@ common warnings
 library
     import:           warnings
     exposed-modules:  Theta
-    other-modules:    Types, Env
+    other-modules:    Types, Env, Parser, Lexer
     -- other-extensions:
-    build-depends:    base ^>=4.17.2.1, text-short ^>=0.1.6
+    build-depends:    base ^>=4.17.2.1, text-short ^>=0.1.6, array ^>=0.5.4.0
     hs-source-dirs:   src
+    build-tool-depends:
+        alex:alex, happy:happy
     default-language: GHC2021
 
 executable theta
