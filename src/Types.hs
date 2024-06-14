@@ -28,7 +28,7 @@ data Term
 instance Show Term where
   show trm =
     case trm of
-    Var x i -> unpack x ++ show i
+    Var x _ -> unpack x
     Lam x t -> "λ" ++ unpack x ++ "." ++ show t
     PLam x t -> "λ" ++ unpack x ++ "." ++ show t
     App t u -> "(" ++ show t ++ " " ++ show u ++ ")"
@@ -48,7 +48,7 @@ data Type
 instance Show Type where
   show typ =
     case typ of
-    TVar x i -> unpack x ++ show i
+    TVar x _ -> unpack x
     Thet x t -> "θ" ++ unpack x ++ "." ++ show t
     FLam x t -> "Λ" ++ unpack x ++ "." ++ show t
     VLam x t -> "Λ" ++ unpack x ++ "." ++ show t
@@ -69,7 +69,7 @@ instance Show Kind where
 
 -- | Higher-order representation of terms.
 data TermH
-  = VarH Name !Int
+  = VarH Name !Int -- x and de Bruijn depth
   | LamH Name !(TermH -> TermH)
   | PLamH Name !(TypeH -> TermH)
   | AppH !TermH !TermH
@@ -78,7 +78,7 @@ data TermH
 
 -- | Higher-order representation of types.
 data TypeH
-  = TVarH Name !Int
+  = TVarH Name !Int -- X and de Bruijn depth
   | ThetH Name !(TermH -> TermH)
   | FLamH Name !(TypeH -> TypeH)
   | VLamH Name !(TermH -> TypeH)

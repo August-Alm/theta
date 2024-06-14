@@ -1,5 +1,5 @@
 module Env
-( Env (depth)
+( Env (termsDepth, typesDepth)
 , empty
 , bindTerm
 , bindType
@@ -18,7 +18,8 @@ import Data.List (findIndex)
 data Env = Env
   { terms :: [(Name, TermH)]
   , types :: [(Name, TypeH)]
-  , depth :: !Int
+  , termsDepth :: !Int
+  , typesDepth :: !Int
   }
 
 indexToName :: Int -> Int -> Name
@@ -30,15 +31,15 @@ indexToName shift idx = go idx []
         else pack . reverse $ acc
 
 empty :: Env
-empty = Env { terms = [], types = [], depth = 0 }
+empty = Env { terms = [], types = [], termsDepth = 0, typesDepth = 0}
 
 bindTerm :: Name -> TermH -> Env -> Env
 bindTerm x t env =
-    env { terms = (x, t) : terms env, depth = depth env + 1 }
+    env { terms = (x, t) : terms env, termsDepth = termsDepth env + 1 }
 
 bindType :: Name -> TypeH -> Env -> Env
 bindType x t env =
-    env { types = (x, t) : types env, depth = depth env + 1 }
+    env { types = (x, t) : types env, typesDepth = typesDepth env + 1 }
 
 freshTermName :: Name -> Env -> Name
 freshTermName x env =
@@ -56,14 +57,14 @@ freshTerm :: Name -> Env -> (Name, TermH, Env)
 freshTerm x env = (x', v', env')
   where
     x' = freshTermName x env
-    v' = VarH x' (-depth env - 1)
+    v' = VarH x' (-termsDepth env - 1)
     env' = bindTerm x' v' env
 
 freshType :: Name -> Env -> (Name, TypeH, Env)
 freshType x env = (x', v', env')
   where
     x' = freshTypeName x env
-    v' = TVarH x' (-depth env - 1)
+    v' = TVarH x' (-typesDepth env - 1)
     env' = bindType x' v' env
 
 maybeAt :: Int -> [a] -> Maybe a

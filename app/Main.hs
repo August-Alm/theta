@@ -22,7 +22,7 @@ any = Thet t (Var t 0) where t = name "t"
 hom :: Type
 hom =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) (TVar b 2)))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 1))) (TVar b 0)))))
     where
       a = name "A"
       b = name "B"
@@ -34,13 +34,13 @@ hom =
 map :: Type
 map =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) bx))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 0))) bx))))
       where
         a = name "A"
         x = name "x"
         b = name "B"
         f = name "f"
-        bx = VApp (TVar b 3) (Ann (Var x 0) (TVar a 3))
+        bx = VApp (TVar b 1) (Ann (Var x 0) (TVar a 1))
 
 -- | Forall type, aka @∀x.A.B@.
 -- @ΛA.ΛB.θt.λx.[t : (B [x : A])]@
@@ -51,30 +51,30 @@ all = FLam a (FLam b (Thet t (Lam x (Ann (Var t 1) bxa))))
     x = name "x"
     b = name "B"
     t = name "t"
-    bxa = VApp (TVar b 2) (Ann (Var x 0) (TVar a 3))
+    bxa = VApp (TVar b 0) (Ann (Var x 0) (TVar a 1))
 
 -- Polymorphic forall type, aka @∀X:κ.T@.
--- @ΛT.θt.λX.[t : (T [X : κ])]@
+-- @ΛT.θs.λX.[s : (T [X : κ])]@
 pol :: Kind -> Type
 pol k = FLam t (Thet s (PLam x (Ann (Var s 1) txk)))
   where
     t = name "T"
     s = name "s"
     x = name "X"
-    txk = FApp (TVar t 2) (TAnn (TVar x 0) k) 
+    txk = FApp (TVar t 1) (TAnn (TVar x 0) k) 
 
 -- | Very dependent (self-typed) function type.
 -- @ΛA.ΛB.θf.λx.[(f [x : A]) : ((B f) [x : A])]@
 ind :: Type
 ind =
   FLam a (FLam b (Thet f (Lam x
-    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 3))) (VApp bf xa)))))
+    (Ann (App (Var f 1) (Ann (Var x 0) (TVar a 1))) (VApp bf xa)))))
     where
       a = name "A"
       b = name "B"
       f = name "f"
       x = name "x"
-      bf = VApp (TVar b 2) (Var f 1)
+      bf = VApp (TVar b 1) (Var f 1)
       xa = Ann (Var x 0) (TVar a 3)
 
 -- | Dependent pairs, aka @Σx:A.B@.
@@ -90,8 +90,8 @@ sig =
         x = name "x"
         y = name "y"
         p = name "p"
-        xa = Ann (Var x 2) (TVar a 5)
-        yb = Ann (Var y 1) (VApp (TVar b 5) xa)
+        xa = Ann (Var x 2) (TVar a 1)
+        yb = Ann (Var y 1) (VApp (TVar b 0) xa)
 
 -- Examples.
 
