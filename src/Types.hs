@@ -16,6 +16,7 @@ type Name = ShortText
 name :: String -> Name
 name = pack
 
+
 -- | A term in Theta Calculus.
 data Term
   = Var Name Int   -- x and de Bruijn index

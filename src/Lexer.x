@@ -1,6 +1,6 @@
 {
-module Lexer (Token (..), scanTokens) where
-import Types (Term (..), Type (..), Kind (..))
+module Lexer (Token (..), tokenize) where
+import Types (Name, Term (..), Type (..), Kind (..))
 }
 
 %wrapper "basic"
@@ -16,6 +16,7 @@ tokens :-
   "λ"                        { \s -> TokenTermLambda }
   "Λ"                        { \s -> TokenTypeLambda }
   "θ"                        { \s -> TokenTheta }
+  "✲"                        { \s -> TokenStar }
   \=                         { \s -> TokenEqual }
   \:                         { \s -> TokenColon }
   \;                         { \s -> TokenSemicolon }
@@ -33,6 +34,7 @@ data Token
   | TokenTermLambda
   | TokenTypeLambda
   | TokenTheta
+  | TokenStar
   | TokenEqual
   | TokenColon
   | TokenSemicolon
@@ -43,7 +45,8 @@ data Token
   | TokenCB
   | TokenTermVar String
   | TokenTypeVar String
+  | TokenEOF
   deriving (Eq, Show)
 
-scanTokens = alexScanTokens
+tokenize = alexScanTokens
 }

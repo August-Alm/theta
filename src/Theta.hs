@@ -7,10 +7,14 @@ module Theta
 , normaliseType
 , normaliseKind
 , check
+, Parser.parseTerm
+, Parser.parseType
+, Parser.parseKind
 ) where
 
 import Types
 import Env
+import Parser
 
 toTermH :: Env -> Term -> TermH
 toTermH env trm =

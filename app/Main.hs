@@ -2,6 +2,7 @@ module Main where
 
 import Theta
 
+
 -- | Kind @✲ -> ✲@.
 -- @θF.ΛX.[(F [X : ✲]) : ✲]@
 starStar :: Kind
@@ -133,15 +134,24 @@ report trm typ =
   case check trm typ of
   Left t -> do
     putStrLn "ok!"
-    putStrLn $ "normalized term = " ++ show t
+    putStrLn $ "normalised term = " ++ show t
   Right (t, t') -> do
     putStrLn "bad!"
-    putStrLn $ "normalized term = " ++ show t
+    putStrLn $ "normalised term = " ++ show t
     putStrLn $ "annotated term = " ++ show t'
 
 
 main :: IO ()
 main = do
+  report
+    (parseTerm "λA.λs.λz.(s (s z))")
+    (parseType
+      "let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
+      \let End = ΛX.((Hom X) X); \
+      \let Nat = ΛF.ΛG.ΛA.((Hom (F A)) (G A)); \
+      \let Church = ((Nat End) End); \
+      \Church")
+  putStrLn ""
   putStrLn $ "Hom = " ++ show (normaliseType hom)
   putStrLn $ "Map = " ++ show (normaliseType Main.map)
   putStrLn $ "All = " ++ show (normaliseType Main.all)
