@@ -152,6 +152,39 @@ main = do
       \let Church = ((Nat End) End); \
       \Church")
   putStrLn ""
+
+  print . normaliseType .parseType $
+    "let true = λP.λt.λf.t; \
+    \let false = λP.λt.λf.t; \
+    \let Bool = θb.λP.λt.λf.[(((b P) [t : (P true)]) [f : (P false)]) : (P b)]; \
+    \Bool"
+  putStrLn ""
+
+  report
+    (parseTerm "λn.λP.λs.λz.z")
+    (parseType
+      "let N = θnat.λP.λs.λz. \
+      \ [(((nat P) \
+      \     λn.[(s [n : N]) : (P (λn.λP.λs.λz.((s n) (((n P) s) z)) n))]) \
+      \     [z : (P λP.λs.λz.z)]) \
+      \   : (P nat)]; \
+      \N")
+  putStrLn ""
+
+  report
+    (parseTerm "λA.λB.λa.λP.λl.λr.(l a)")
+    (parseType
+      "let left = λA.λB.λa.λP.λl.λr.(l a); \
+      \let right = λA.λB.λb.λP.λl.λr.(r b); \
+      \let Either = ΛA.ΛB.θself.λP.λl.λr. \
+      \  [(((self P) \
+      \     λa.[(l [a : A]) : (P (((left A) B) a))]) \
+      \     λb.[(r [b : B]) : (P (((right A) B) b))]) \
+      \   : (P self)]; \
+      \let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
+      \ΛA.ΛB.((Hom A) ((Either A) B))")
+  putStrLn ""
+
   putStrLn $ "Hom = " ++ show (normaliseType hom)
   putStrLn $ "Map = " ++ show (normaliseType Main.map)
   putStrLn $ "All = " ++ show (normaliseType Main.all)

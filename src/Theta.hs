@@ -19,6 +19,7 @@ import Parser
 toTermH :: Env -> Term -> TermH
 toTermH env trm =
   case trm of
+  Ref x -> RefH x
   Var x i ->
     case getTerm i env of
     Just t -> t
@@ -32,6 +33,7 @@ toTermH env trm =
 toTypeH :: Env -> Type -> TypeH
 toTypeH env typ =
   case typ of
+  TRef x -> TRefH x
   TVar x i ->
     case getType i env of
     Just t -> t
@@ -52,6 +54,7 @@ toKindH env k =
 ofTermH :: Env -> TermH -> Term
 ofTermH env trm =
   case trm of
+  RefH x -> Ref x
   VarH x i -> Var x (if i < 0 then termsDepth env + i else i)
   LamH x f ->
     Lam x' (ofTermH env' (f v'))
@@ -66,6 +69,7 @@ ofTermH env trm =
 ofTypeH :: Env -> TypeH -> Type
 ofTypeH env typ =
   case typ of
+  TRefH x -> TRef x
   TVarH x i -> TVar x (if i < 0 then typesDepth env + i else i)
   ThetH x f ->
     Thet x' (ofTermH env' (f v'))
@@ -88,9 +92,26 @@ ofKindH env k =
     KThet x' (ofTypeH env' (f v'))
       where (x', v', env') = freshType x env
 
+reduceTerm :: Module -> TermH -> TermH
+reduceTerm m trm =
+  case trm of
+  RefH x ->
+    case getTermDef x m of
+    Just (TermDef _ _ t) -> reduceTerm m (toTermH Env.empty t)
+    Nothing -> RefH x
+  AppH (LamH _ f) u -> reduceTerm m (f u)
+  PAppH (PLamH _ f) a -> reduceTerm m (f a)
+  AnnH t (ThetH _ f) -> reduceTerm m (f t)
+  AnnH (LamH x f) (VLamH _ b) -> LamH x (\v -> AnnH (f v) (b v))
+  AnnH t (VLamH x b) -> LamH x (AnnH t . b)
+  _ -> trm
+
+
+
 normTerm :: TermH -> TermH
 normTerm trm =
   case trm of
+  RefH _ -> trm
   VarH _ _ -> trm
   LamH x f -> LamH x (normTerm . f)
   AppH t u ->
@@ -115,6 +136,7 @@ normTerm trm =
 normType :: TypeH -> TypeH
 normType typ =
   case typ of
+  TRefH _ -> typ
   TVarH _ _ -> typ
   ThetH x f -> ThetH x (normTerm . f)
   FLamH x f -> FLamH x (normType . f)

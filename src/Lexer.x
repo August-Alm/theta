@@ -12,19 +12,19 @@ tokens :-
   \,                         ;
   $eol                       ;
   $white+                    ;
-  let                        { \s -> TokenLet }
-  "λ"                        { \s -> TokenTermLambda }
-  "Λ"                        { \s -> TokenTypeLambda }
-  "θ"                        { \s -> TokenTheta }
-  "✲"                        { \s -> TokenStar }
-  \=                         { \s -> TokenEqual }
-  \:                         { \s -> TokenColon }
-  \;                         { \s -> TokenSemicolon }
-  \.                         { \s -> TokenDot }
-  \(                         { \s -> TokenOP }
-  \)                         { \s -> TokenCP }
-  \[                         { \s -> TokenOB }
-  \]                         { \s -> TokenCB }
+  let                        { \_ -> TokenLet }
+  "λ"                        { \_ -> TokenTermLambda }
+  "Λ"                        { \_ -> TokenTypeLambda }
+  "θ"                        { \_ -> TokenTheta }
+  "✲"                        { \_ -> TokenStar }
+  \=                         { \_ -> TokenEqual }
+  \:                         { \_ -> TokenColon }
+  \;                         { \_ -> TokenSemicolon }
+  \.                         { \_ -> TokenDot }
+  \(                         { \_ -> TokenOP }
+  \)                         { \_ -> TokenCP }
+  \[                         { \_ -> TokenOB }
+  \]                         { \_ -> TokenCB }
   [a-z] [$alphanum \_ \']*   { \s -> TokenTermVar s }
   [A-Z] [$alphanum \_ \']*   { \s -> TokenTypeVar s }
 

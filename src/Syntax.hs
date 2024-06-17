@@ -44,22 +44,22 @@ data Names = Names
   , types :: [Name]
   }
 
-termIndex :: Names -> Name -> Int
-termIndex ns x =
+termVarOrRef :: Names -> Name -> Term
+termVarOrRef ns x =
   case elemIndex x (terms ns) of
-  Just i -> i
-  Nothing -> error $ "unbound term variable: " ++ show x
+  Just i -> Var x i
+  Nothing -> Ref x
 
-typeIndex :: Names -> Name -> Int
-typeIndex ns x =
+typeVarOrRef :: Names -> Name -> Type
+typeVarOrRef ns x =
   case elemIndex x (types ns) of
-  Just i -> i
-  Nothing -> error $ "unbound type variable: " ++ show x
+  Just i -> TVar x i
+  Nothing -> TRef x
 
 termOfP :: Names -> TermP -> Term
 termOfP ns trm =
   case trm of
-  VarP x -> Var x (termIndex ns x)
+  VarP x -> termVarOrRef ns x
   LamP x t -> Lam x (termOfP (ns { terms = x : terms ns }) t)
   PLamP x t -> PLam x (termOfP (ns { types = x : types ns }) t)
   AppP t u -> App (termOfP ns t) (termOfP ns u)
@@ -73,7 +73,7 @@ termOfP ns trm =
 typeOfP :: Names -> TypeP -> Type
 typeOfP ns typ =
   case typ of
-  TVarP x -> TVar x (typeIndex ns x)
+  TVarP x -> typeVarOrRef ns x
   ThetP x t -> Thet x (termOfP (ns { terms = x : terms ns }) t)
   FLamP x t -> FLam x (typeOfP (ns { types = x : types ns }) t)
   VLamP x t -> VLam x (typeOfP (ns { terms = x : terms ns }) t)

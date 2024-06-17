@@ -7,8 +7,16 @@ module Types
 , TermH (..)
 , TypeH (..)
 , KindH (..)
+, TermDef (..)
+, TypeDef (..)
+, Module (..)
+, getTermDef
+, getTypeDef
+, addTermDef
+, addTypeDef
 ) where
 
+import Data.Map
 import Data.Text.Short (ShortText, pack, unpack)
 
 type Name = ShortText
@@ -16,10 +24,10 @@ type Name = ShortText
 name :: String -> Name
 name = pack
 
-
 -- | A term in Theta Calculus.
 data Term
-  = Var Name Int   -- x and de Bruijn index
+  = Ref Name       -- x, a reference to a definition
+  | Var Name Int   -- x and de Bruijn index
   | Lam Name Term  -- λx.t
   | PLam Name Term -- λX.t
   | App Term Term  -- t t'
@@ -29,6 +37,7 @@ data Term
 instance Show Term where
   show trm =
     case trm of
+    Ref x -> unpack x
     Var x _ -> unpack x
     Lam x t -> "λ" ++ unpack x ++ "." ++ show t
     PLam x t -> "λ" ++ unpack x ++ "." ++ show t
@@ -38,7 +47,8 @@ instance Show Term where
 
 -- | A type in Theta Calculus.
 data Type
-  = TVar Name Int   -- X and de Bruijn index
+  = TRef Name       -- X, a reference to a definition
+  | TVar Name Int   -- X and de Bruijn index
   | Thet Name Term  -- θx.t
   | FLam Name Type  -- ΛX.T
   | VLam Name Type  -- Λx.T
@@ -49,6 +59,7 @@ data Type
 instance Show Type where
   show typ =
     case typ of
+    TRef x -> unpack x
     TVar x _ -> unpack x
     Thet x t -> "θ" ++ unpack x ++ "." ++ show t
     FLam x t -> "Λ" ++ unpack x ++ "." ++ show t
@@ -70,7 +81,8 @@ instance Show Kind where
 
 -- | Higher-order representation of terms.
 data TermH
-  = VarH Name !Int -- x and de Bruijn depth
+  = RefH Name
+  | VarH Name !Int -- x and de Bruijn depth
   | LamH Name !(TermH -> TermH)
   | PLamH Name !(TypeH -> TermH)
   | AppH !TermH !TermH
@@ -79,7 +91,8 @@ data TermH
 
 -- | Higher-order representation of types.
 data TypeH
-  = TVarH Name !Int -- X and de Bruijn depth
+  = TRefH Name
+  | TVarH Name !Int -- X and de Bruijn depth
   | ThetH Name !(TermH -> TermH)
   | FLamH Name !(TypeH -> TypeH)
   | VLamH Name !(TermH -> TypeH)
@@ -91,3 +104,29 @@ data TypeH
 data KindH
   = KStarH
   | KThetH Name !(TypeH -> TypeH)
+
+-- | A top-level term definition.
+data TermDef = TermDef Name Type Term
+
+-- | A top-level type definition.
+data TypeDef = TypeDef Name Kind Type
+
+-- | A module is a collection of term and type definitions.
+data Module = Module
+  { termDefs :: Map Name TermDef
+  , typeDefs :: Map Name TypeDef
+  }
+
+getTermDef :: Name -> Module -> Maybe TermDef
+getTermDef x m = Data.Map.lookup x (termDefs m)
+
+getTypeDef :: Name -> Module -> Maybe TypeDef
+getTypeDef x m = Data.Map.lookup x (typeDefs m)
+
+addTermDef :: TermDef -> Module -> Module
+addTermDef def@(TermDef x _ _) m =
+  m { termDefs = Data.Map.insert x def (termDefs m) }
+
+addTypeDef :: TypeDef -> Module -> Module
+addTypeDef def@(TypeDef x _ _) m =
+  m { typeDefs = Data.Map.insert x def (typeDefs m) }
