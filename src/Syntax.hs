@@ -2,13 +2,21 @@ module Syntax
 ( TermP (..)
 , TypeP (..)
 , KindP (..)
+, TermDefP (..)
+, TypeDefP (..)
+, ModuleP (..)
+, emptyModuleP
+, addTermDefP
+, addTypeDefP
 , toTerm
 , toType
 , toKind
+, toModule
 )
 where
 
-import Types (Name, Term (..), Type (..), Kind (..))
+import Types
+import Data.Map (Map, empty, insert)
 import Data.List (elemIndex)
 
 data TermP
@@ -43,6 +51,39 @@ data Names = Names
   { terms :: [Name]
   , types :: [Name]
   }
+
+data TermDefP = TermDefP Name TypeP TermP
+
+data TypeDefP = TypeDefP Name KindP TypeP
+
+data ModuleP = ModuleP
+  { termDefsP :: Map Name TermDefP
+  , typeDefsP :: Map Name TypeDefP
+  , nameDefsP :: [Name]
+  }
+
+emptyModuleP :: ModuleP
+emptyModuleP =
+  ModuleP { termDefsP = Data.Map.empty, typeDefsP = Data.Map.empty, nameDefsP = [] }
+
+addTermDefP :: TermDefP -> ModuleP -> ModuleP
+addTermDefP def@(TermDefP x _ _) m =
+  m { termDefsP = Data.Map.insert x def (termDefsP m), nameDefsP = x : nameDefsP m }
+
+addTypeDefP :: TypeDefP -> ModuleP -> ModuleP
+addTypeDefP def@(TypeDefP x _ _) m =
+  m { typeDefsP = Data.Map.insert x def (typeDefsP m), nameDefsP = x : nameDefsP m }
+
+toModule :: ModuleP -> Module
+toModule m = Module
+  { termDefs = fmap toTermDef (termDefsP m)
+  , typeDefs = fmap toTypeDef (typeDefsP m)
+  , nameDefs = nameDefsP m
+  }
+  where
+    toTermDef (TermDefP x t trm) = TermDef x (toType t) (toTerm trm)
+    toTypeDef (TypeDefP x k typ) = TypeDef x (toKind k) (toType typ)
+
 
 termVarOrRef :: Names -> Name -> Term
 termVarOrRef ns x =

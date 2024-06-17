@@ -3,17 +3,20 @@ module Parser
 ( parseTerm
 , parseType
 , parseKind
+, parseModule
 ) where
 
 import Data.Char
 import Lexer
-import Types (Name, name, Term (..), Type (..), Kind (..))
+import Types (Name, name, Term (..), Type (..), Kind (..), Module (..))
 import Syntax
 }
 
 %name parseTermP term
 %name parseTypeP type
 %name parseKindP kind
+%name parseModuleP module
+
 %tokentype { Token }
 %error { parseError }
 
@@ -61,6 +64,16 @@ kind
   : '✲'                         { KStarP }
   | the Var '.' type            { KThetP (name $2) $4 }
 
+termDef
+  : let var ':' type '=' term   { TermDefP (name $2) $4 $6 }
+
+typeDef
+  : let Var ':' kind '=' type   { TypeDefP (name $2) $4 $6 }
+
+module
+  :                             { emptyModuleP }
+  | module termDef              { addTermDefP $2 $1 }
+  | module typeDef              { addTypeDefP $2 $1 }
 
 {
 parseError :: [Token] -> a
@@ -74,4 +87,7 @@ parseType = toType . parseTypeP . tokenize
 
 parseKind :: String -> Kind
 parseKind = toKind . parseKindP . tokenize
+
+parseModule :: String -> Module
+parseModule = toModule . parseModuleP . tokenize
 }

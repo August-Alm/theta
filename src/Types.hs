@@ -1,6 +1,7 @@
 module Types
 ( Name
 , name
+, string
 , Term (..)
 , Type (..)
 , Kind (..)
@@ -14,15 +15,19 @@ module Types
 , getTypeDef
 , addTermDef
 , addTypeDef
+, emptyModule
 ) where
 
-import Data.Map
+import Data.Map (Map, empty, insert, lookup)
 import Data.Text.Short (ShortText, pack, unpack)
 
 type Name = ShortText
 
 name :: String -> Name
 name = pack
+
+string :: Name -> String
+string = unpack
 
 -- | A term in Theta Calculus.
 data Term
@@ -83,27 +88,27 @@ instance Show Kind where
 data TermH
   = RefH Name
   | VarH Name !Int -- x and de Bruijn depth
-  | LamH Name !(TermH -> TermH)
-  | PLamH Name !(TypeH -> TermH)
-  | AppH !TermH !TermH
-  | PAppH !TermH !TypeH
-  | AnnH !TermH !TypeH
+  | LamH Name (TermH -> TermH)
+  | PLamH Name (TypeH -> TermH)
+  | AppH TermH TermH
+  | PAppH TermH TypeH
+  | AnnH TermH TypeH
 
 -- | Higher-order representation of types.
 data TypeH
   = TRefH Name
   | TVarH Name !Int -- X and de Bruijn depth
-  | ThetH Name !(TermH -> TermH)
-  | FLamH Name !(TypeH -> TypeH)
-  | VLamH Name !(TermH -> TypeH)
-  | FAppH !TypeH !TypeH
-  | VAppH !TypeH !TermH
-  | TAnnH !TypeH !KindH
+  | ThetH Name (TermH -> TermH)
+  | FLamH Name (TypeH -> TypeH)
+  | VLamH Name (TermH -> TypeH)
+  | FAppH TypeH TypeH
+  | VAppH TypeH TermH
+  | TAnnH TypeH KindH
 
 -- | Higher-order representation of kinds.
 data KindH
   = KStarH
-  | KThetH Name !(TypeH -> TypeH)
+  | KThetH Name (TypeH -> TypeH)
 
 -- | A top-level term definition.
 data TermDef = TermDef Name Type Term
@@ -111,11 +116,17 @@ data TermDef = TermDef Name Type Term
 -- | A top-level type definition.
 data TypeDef = TypeDef Name Kind Type
 
--- | A module is a collection of term and type definitions.
+-- | A module is a collection of term and type definitions. Also keeps track
+-- of the names of the definitions in the reverse order they were added.
 data Module = Module
   { termDefs :: Map Name TermDef
   , typeDefs :: Map Name TypeDef
+  , nameDefs :: [Name]
   }
+
+emptyModule :: Module
+emptyModule =
+  Module { termDefs = Data.Map.empty, typeDefs = Data.Map.empty, nameDefs = [] }
 
 getTermDef :: Name -> Module -> Maybe TermDef
 getTermDef x m = Data.Map.lookup x (termDefs m)
@@ -125,8 +136,8 @@ getTypeDef x m = Data.Map.lookup x (typeDefs m)
 
 addTermDef :: TermDef -> Module -> Module
 addTermDef def@(TermDef x _ _) m =
-  m { termDefs = Data.Map.insert x def (termDefs m) }
+  m { termDefs = Data.Map.insert x def (termDefs m), nameDefs = x : nameDefs m }
 
 addTypeDef :: TypeDef -> Module -> Module
 addTypeDef def@(TypeDef x _ _) m =
-  m { typeDefs = Data.Map.insert x def (typeDefs m) }
+  m { typeDefs = Data.Map.insert x def (typeDefs m), nameDefs = x : nameDefs m }

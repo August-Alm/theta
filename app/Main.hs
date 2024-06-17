@@ -62,7 +62,7 @@ pol k = FLam t (Thet s (PLam x (Ann (Var s 1) txk)))
     t = name "T"
     s = name "s"
     x = name "X"
-    txk = FApp (TVar t 1) (TAnn (TVar x 0) k) 
+    txk = FApp (TVar t 1) (TAnn (TVar x 0) k)
 
 -- | Very dependent (self-typed) function type.
 -- @ΛA.ΛB.θf.λx.[(f [x : A]) : ((B f) [x : A])]@
@@ -94,44 +94,38 @@ sig =
         xa = Ann (Var x 2) (TVar a 1)
         yb = Ann (Var y 1) (VApp (TVar b 0) xa)
 
--- Examples.
+reportCheckResult :: CheckResult -> IO ()
+reportCheckResult res =
+  case res of
+  TypeCheck (TermDef x typ t, Left tNf) -> do
+    putStrLn $ "ok! " ++ string x ++ " : " ++ show typ
+    putStrLn $ "original term = " ++ show t
+    putStrLn $ "normalised term = " ++ show tNf
+    putStrLn ""
+  TypeCheck (TermDef x typ t, Right (tNf, tAnn)) -> do
+    putStrLn $ "bad! " ++ string x ++ " : " ++ show typ
+    putStrLn $ "original term = " ++ show t
+    putStrLn $ "normalised term = " ++ show tNf
+    putStrLn $ "annotated term = " ++ show tAnn
+    putStrLn ""
+  KindCheck (TypeDef x k t, Left tNf) -> do
+    putStrLn $ "ok! " ++ string x ++ " : " ++ show k
+    putStrLn $ "original type = " ++ show t
+    putStrLn $ "normalised type = " ++ show tNf
+    putStrLn ""
+  KindCheck (TypeDef x k t, Right (tNf, tAnn)) -> do
+    putStrLn $ "bad! " ++ string x ++ " : " ++ show k
+    putStrLn $ "original type = " ++ show t
+    putStrLn $ "normalised type = " ++ show tNf
+    putStrLn $ "annotated type = " ++ show tAnn
+    putStrLn ""
 
--- | Functorial endomorphism type.
-end :: Type
-end = FLam x (FApp (FApp hom (TVar x 0)) (TVar x 0))
-  where
-    x = name "X"
+report :: Module -> IO ()
+report = mapM_ reportCheckResult . checkModule
 
--- | Natural transformations type.
-nat :: Type
-nat = FLam f (FLam g (FLam a (FApp (FApp hom fa) ga)))
-  where
-    f = name "F"
-    g = name "G"
-    a = name "A"
-    fa = FApp (TVar f 2) (TVar a 0)
-    ga = FApp (TVar g 1) (TVar a 0)
-
--- | Church numerals type.
-church :: Type
-church = FApp (FApp nat end) end
-
-idlam :: Term
-idlam = PLam a (Lam x (Var x 0))
-  where
-    a = name "A"
-    x = name "x"
-
-two :: Term
-two = PLam a (Lam s (Lam z (App (Var s 1) (App (Var s 1) (Var z 0)))))
-  where
-    a = name "A"
-    s = name "s"
-    z = name "z"
-
-report :: Term -> Type -> IO ()
-report trm typ =
-  case check trm typ of
+reportTypeCheck :: Module -> Term -> Type -> IO ()
+reportTypeCheck m trm typ =
+  case checkTerm m trm typ of
   Left t -> do
     putStrLn "ok!"
     putStrLn $ "normalised term = " ++ show t
@@ -143,60 +137,38 @@ report trm typ =
 
 main :: IO ()
 main = do
-  report
-    (parseTerm "λA.λs.λz.(s (s z))")
-    (parseType
-      "let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
-      \let End = ΛX.((Hom X) X); \
-      \let Nat = ΛF.ΛG.ΛA.((Hom (F A)) (G A)); \
-      \let Church = ((Nat End) End); \
-      \Church")
-  putStrLn ""
 
-  print . normaliseType .parseType $
-    "let true = λP.λt.λf.t; \
-    \let false = λP.λt.λf.t; \
-    \let Bool = θb.λP.λt.λf.[(((b P) [t : (P true)]) [f : (P false)]) : (P b)]; \
-    \Bool"
-  putStrLn ""
+  report . parseModule $ "let Hom : ✲ = ΛA.ΛB.θf.λx.[(f [x : A]) : B]"
+  
+  report . parseModule $
+    "let Bool : ✲ = θb.λP.λt.λf.[(((b P) [t : (P true)]) [f : (P false)]) : (P b)] \
+    \let true : Bool = λP.λt.λf.t \
+    \let false : Bool = λP.λt.λf.t"
 
-  report
-    (parseTerm "λn.λP.λs.λz.z")
-    (parseType
-      "let N = θnat.λP.λs.λz. \
-      \ [(((nat P) \
-      \     λn.[(s [n : N]) : (P (λn.λP.λs.λz.((s n) (((n P) s) z)) n))]) \
-      \     [z : (P λP.λs.λz.z)]) \
-      \   : (P nat)]; \
-      \N")
-  putStrLn ""
+  report . parseModule $
+    "let Church : ✲ = \
+    \  let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
+    \  let End = ΛX.((Hom X) X); \
+    \  let Nat = ΛF.ΛG.ΛA.((Hom (F A)) (G A)); \
+    \  ((Nat End) End) \
+    \let two : Church = λA.λs.λz.(s (s z))"
 
-  report
-    (parseTerm "λA.λB.λa.λP.λl.λr.(l a)")
-    (parseType
-      "let left = λA.λB.λa.λP.λl.λr.(l a); \
-      \let right = λA.λB.λb.λP.λl.λr.(r b); \
-      \let Either = ΛA.ΛB.θself.λP.λl.λr. \
+  -- This fails because of infinite recursion. TODO!
+  --report . parseModule $
+  --  "let Nat : ✲ = θnat.λP.λs.λz. \
+  --  \  [(((nat P) \
+  --  \     [s : θs.λn.[(s [n : Nat]) : (P (succ n))]]) \
+  --  \     [z : (P zero)]) \
+  --  \   : (P nat)]\
+  --  \let succ : Nat = λn.λP.λs.λz.((s n) (((n P) s) z)) \
+  --  \let zero : Nat = λP.λs.λz.z"
+
+  report . parseModule $
+      "let Hom : ✲  = ΛA.ΛB.θf.λx.[(f [x : A]) : B] \
+      \let Either : ✲ = ΛA.ΛB.θself.λP.λl.λr. \
       \  [(((self P) \
       \     λa.[(l [a : A]) : (P (((left A) B) a))]) \
       \     λb.[(r [b : B]) : (P (((right A) B) b))]) \
-      \   : (P self)]; \
-      \let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
-      \ΛA.ΛB.((Hom A) ((Either A) B))")
-  putStrLn ""
-
-  putStrLn $ "Hom = " ++ show (normaliseType hom)
-  putStrLn $ "Map = " ++ show (normaliseType Main.map)
-  putStrLn $ "All = " ++ show (normaliseType Main.all)
-  putStrLn $ "Pol (✲ -> ✲) = " ++ show (normaliseType (pol starStar))
-  putStrLn $ "Ind = " ++ show (normaliseType ind)
-  putStrLn $ "Sig = " ++ show (normaliseType sig)
-  putStrLn $ "End = " ++ show (normaliseType end)
-  putStrLn $ "Nat = " ++ show (normaliseType nat)
-  putStrLn $ "Church = " ++ show (normaliseType church)
-  putStrLn ""
-  putStrLn "Checking idlam : ∀X:✲.X -> X"
-  report idlam end
-  putStrLn ""
-  putStrLn "Checking two : ∀A:✲.((A -> A) -> A -> A)"
-  report two church
+      \   : (P self)] \
+      \let left : ΛA.ΛB.((Hom A) ((Either A) B)) = λA.λB.λa.λP.λl.λr.(l a) \
+      \let right : ΛA.ΛB.((Hom B) ((Either A) B)) = λA.λB.λb.λP.λl.λr.(r b)"
