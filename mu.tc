@@ -12,9 +12,7 @@ let Hom : kbif
 let FMap : ✲
   = ΛF.ΛX.ΛY.((Hom ((Hom X) Y)) ((Hom (F X)) (F Y)))
 
-let H : kbif = Hom
-
-let hmap : ΛA.(FMap (H A))
+let hmap : ΛA.(FMap (Hom A))
   = λA.λX.λY.λf.λg.λa.(f (g a))
 
 let Alg : kalg
