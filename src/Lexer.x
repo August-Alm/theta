@@ -5,7 +5,7 @@ import Types (Name, Term (..), Type (..), Kind (..))
 
 %wrapper "basic"
 
-$alphanum = [a-zA-Z]
+$alphanum = [a-zA-Z 0-9]
 $eol = [\n]
 
 tokens :-

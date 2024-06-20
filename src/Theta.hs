@@ -5,6 +5,7 @@ module Theta
 , Types.Module (..)
 , Types.TermDef (..)
 , Types.TypeDef (..)
+, Types.KindDef (..)
 , Types.emptyModule
 , Types.name
 , Types.string
@@ -24,7 +25,7 @@ module Theta
 import Types
 import Env
 import Parser
-import qualified GHC.Conc as Parser
+import Debug.Trace (trace)
 
 toTermH :: Env -> Term -> TermH
 toTermH env trm =
@@ -58,7 +59,7 @@ toTypeH env typ =
 toKindH :: Env -> Kind -> KindH
 toKindH env k =
   case k of
-  KStar -> KStarH
+  KRef x -> KRefH x
   KThet x t -> KThetH x (\v -> toTypeH (bindType x v env) t)
 
 ofTermH :: Env -> TermH -> Term
@@ -97,7 +98,7 @@ ofTypeH env typ =
 ofKindH :: Env -> KindH -> Kind
 ofKindH env k =
   case k of
-  KStarH -> KStar
+  KRefH x -> KRef x
   KThetH x f ->
     KThet x' (ofTypeH env' (f v'))
       where (x', v', env') = freshType x env
@@ -120,6 +121,15 @@ unrefType m t =
     Nothing -> t
   _ -> t
 
+unrefKind :: Module -> KindH -> KindH
+unrefKind m k =
+  case k of
+  KRefH x ->
+    case getKindDef x m of
+    Just (KindDef _ u) -> toKindH Env.empty u
+    Nothing -> k
+  _ -> k
+
 normTerm :: Module -> TermH -> TermH
 normTerm m trm =
   case trm of
@@ -128,7 +138,7 @@ normTerm m trm =
   LamH x f -> LamH x (normTerm m . f)
   AppH t u ->
     case (normTerm m (unrefTerm m t), normTerm m u) of
-    (LamH _ f, v) -> f v
+    (LamH _ f, v) -> normTerm m (f v)
     (f, v) -> AppH f v
   PLamH x f -> PLamH x (normTerm m . f)
   PAppH f a ->
@@ -137,11 +147,11 @@ normTerm m trm =
     (g, b) -> PAppH g b
   AnnH t a ->
     case (normTerm m t, normType m (unrefType m a)) of
-    (s, ThetH _ f) -> f s
+    (s, ThetH _ f) -> normTerm m (f s)
     (LamH _ f, VLamH x b) -> LamH x (\v -> normTerm m $ AnnH (f v) (b v))
-    (s, VLamH x b) -> LamH x (normTerm m . AnnH s . b)
+    (s, VLamH x b) -> LamH x (\v -> normTerm m $ AnnH (AppH s v) (b v))
     (PLamH _ f, FLamH x b) -> PLamH x (\v -> normTerm m $ AnnH (f v) (b v))
-    (s, FLamH x b) -> PLamH x (normTerm m . AnnH s . b)
+    (s, FLamH x b) -> PLamH x (\v -> normTerm m $ AnnH (PAppH s v) (b v))
     (AnnH s b, c) | eqType m 0 0 b c -> s
     (s, b) -> AnnH s b
 
@@ -163,19 +173,55 @@ normType m typ =
     (ThetH x f, b) -> ThetH x (\s -> normTerm m $ AppH (f s) b)
     (f, b) -> VAppH f b
   TAnnH t k ->
-    case (normType m (unrefType m t), normKind m k) of
+    case (normType m t, normKind m (unrefKind m k)) of
     (s, KThetH _ f) -> f s
-    (s@(ThetH _ _), KStarH) -> s
-    (FLamH x f, KStarH) -> FLamH x (\v -> normType m $ TAnnH (f v) KStarH)
-    (VLamH x f, KStarH) -> VLamH x (\v -> normType m $ TAnnH (f v) KStarH)
     (TAnnH s k', k'') | eqKind m 0 0 k' k'' -> s
     (s, k') -> TAnnH s k'
 
 normKind :: Module -> KindH -> KindH
 normKind m k =
   case k of
-  KStarH -> k
+  KRefH _ -> k
   KThetH x f -> KThetH x (normType m . f)
+
+redTerm :: Module -> TermH -> TermH
+redTerm m trm =
+  case trm of
+  AppH (LamH _ f) u -> redTerm m (f u)
+  AppH t@(RefH _) u -> redTerm m (AppH (redUnrefTerm t) u)
+  PAppH (PLamH _ f) a -> redTerm m (f a)
+  PAppH t@(RefH _) a -> redTerm m (PAppH (redUnrefTerm t) a)
+  AnnH s (ThetH _ f) -> redTerm m (f s)
+  AnnH (LamH _ f) (VLamH x b) -> LamH x (\v -> AnnH (f v) (b v))
+  AnnH s (VLamH x b) -> LamH x (AnnH s . b)
+  AnnH (PLamH _ f) (FLamH x b) -> PLamH x (\v -> AnnH (f v) (b v))
+  AnnH s (FLamH x b) -> PLamH x (AnnH s . b)
+  AnnH t@(RefH _) u@(TRefH _) -> redTerm m (AnnH (redUnrefTerm t) (redUnrefType u))
+  AnnH t@(RefH _) u -> redTerm m (AnnH (redUnrefTerm t) u)
+  AnnH s u@(TRefH _) -> redTerm m (AnnH s (redUnrefType u))
+  _ -> trm
+  where
+    redUnrefTerm t = redTerm m (unrefTerm m t)
+    redUnrefType t = redType m (unrefType m t)
+
+redType :: Module -> TypeH -> TypeH
+redType m typ =
+  case typ of
+  FAppH (FLamH _ f) a -> redType m (f a)
+  FAppH t@(TRefH _) u -> redType m (FAppH (redUnrefType t) u)
+  VAppH (VLamH _ f) u -> redType m (f u)
+  VAppH t@(TRefH _) u -> redType m (VAppH (redUnrefType t) u)
+  TAnnH t (KThetH _ f) -> redType m (f t)
+  TAnnH t@(TRefH _) k -> redType m (TAnnH (redUnrefType t) k)
+  _ -> typ
+  where
+    redUnrefType t = redType m (unrefType m t)
+
+traceTerm :: TermH -> TermH
+traceTerm t = trace (show (ofTermH Env.empty t)) t
+
+traceType :: TypeH -> TypeH
+traceType t = trace (show (ofTypeH Env.empty t)) t
 
 eqTerm :: Module -> Int -> Int -> TermH -> TermH -> Bool
 eqTerm m trmDep typDep t u =
@@ -260,13 +306,21 @@ eqType m trmDep typDep t u =
 eqKind :: Module -> Int -> Int -> KindH -> KindH -> Bool
 eqKind m trmDep typDep k l =
   case (k, l) of
-  (KStarH, KStarH) -> True
+  (KRefH x, KRefH y) ->
+    (x == y) || (case (getKindDef x m, getKindDef y m) of
+      (Just (KindDef _ kk), Just (KindDef _ ll)) ->
+        eqKind m trmDep typDep (toKindH Env.empty kk) (toKindH Env.empty ll)
+      _ -> False)
+  (KRefH x, _) ->
+    case getKindDef x m of
+    Just (KindDef _ kk) -> eqKind m trmDep typDep (toKindH Env.empty kk) l
+    _ -> False
+  (_, KRefH y) ->
+    case getKindDef y m of
+    Just (KindDef _ ll) -> eqKind m trmDep typDep k (toKindH Env.empty ll)
+    _ -> False
   (KThetH x f, KThetH _ g) ->
     eqType m trmDep (typDep + 1) (f (TVarH x typDep)) (g (TVarH x typDep))
-  (KThetH x f, _) ->
-    eqType m trmDep (typDep + 1) (f (TVarH x typDep)) (TAnnH (TVarH x typDep) l)
-  (_, KThetH y g) ->
-    eqType m trmDep (typDep + 1) (TAnnH (TVarH y typDep) k) (g (TVarH y typDep))
 
 -- | Beta-eta term normalisation.
 normaliseTerm :: Module -> Term -> Term
@@ -305,6 +359,7 @@ checkType m t k =
 data CheckResult
   = TypeCheck (TermDef, Either Term (Term, Term))
   | KindCheck (TypeDef, Either Type (Type, Type))
+  | K KindDef
 
 checkModule :: Module -> [CheckResult]
 checkModule m = fmap result xs
@@ -316,4 +371,7 @@ checkModule m = fmap result xs
       Nothing ->
         case getTypeDef x m of
         Just def@(TypeDef _ k t) -> KindCheck (def, checkType m t k)
-        Nothing -> error "impossible!"
+        Nothing ->
+          case getKindDef x m of
+          Just def -> K def
+          Nothing -> error "impossible!"

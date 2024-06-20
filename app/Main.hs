@@ -3,12 +3,15 @@ module Main where
 import Theta
 
 
+star :: Kind
+star = KThet (name "T") (TVar (name "T") 0)
+
 -- | Kind @✲ -> ✲@.
 -- @θF.ΛX.[(F [X : ✲]) : ✲]@
 starStar :: Kind
 starStar =
   KThet f (FLam x
-    (TAnn (FApp (TVar f 1) (TAnn (TVar x 0) KStar)) KStar))
+    (TAnn (FApp (TVar f 1) (TAnn (TVar x 0) star)) star))
       where
         f = name "F"
         x = name "X"
@@ -119,6 +122,9 @@ reportCheckResult res =
     putStrLn $ "normalised type = " ++ show tNf
     putStrLn $ "annotated type = " ++ show tAnn
     putStrLn ""
+  K (KindDef x k) -> do
+    putStrLn $ "kind! " ++ string x ++ " = " ++ show k
+    putStrLn ""
 
 report :: Module -> IO ()
 report = mapM_ reportCheckResult . checkModule
@@ -138,19 +144,18 @@ reportTypeCheck m trm typ =
 main :: IO ()
 main = do
 
-  report . parseModule $ "let Hom : ✲ = ΛA.ΛB.θf.λx.[(f [x : A]) : B]"
+  report . parseModule $ "let Hom : θF.ΛX.ΛY.[((F [X : ✲]) [Y : ✲]) : ✲] = ΛA.ΛB.θf.λx.[(f [x : A]) : B]"
   
   report . parseModule $
     "let Bool : ✲ = θb.λP.λt.λf.[(((b P) [t : (P true)]) [f : (P false)]) : (P b)] \
     \let true : Bool = λP.λt.λf.t \
     \let false : Bool = λP.λt.λf.t"
 
+  -- @ΛT.θs.λX.[s : (T [X : κ])]@
   report . parseModule $
     "let Church : ✲ = \
-    \  let Hom = ΛA.ΛB.θf.λx.[(f [x : A]) : B]; \
-    \  let End = ΛX.((Hom X) X); \
-    \  let Nat = ΛF.ΛG.ΛA.((Hom (F A)) (G A)); \
-    \  ((Nat End) End) \
+    \  let Hom = ΛA.ΛB.θf.λx.[(f [x : [A : ✲]]) : [B : ✲]]; \
+    \  ΛA.((Hom ((Hom A) A)) ((Hom A) A))  \
     \let two : Church = λA.λs.λz.(s (s z))"
 
   -- This fails because of infinite recursion. TODO!
@@ -164,11 +169,15 @@ main = do
   --  \let zero : Nat = λP.λs.λz.z"
 
   report . parseModule $
-      "let Hom : ✲  = ΛA.ΛB.θf.λx.[(f [x : A]) : B] \
-      \let Either : ✲ = ΛA.ΛB.θself.λP.λl.λr. \
+      "let Hom : θF.ΛX.ΛY.[((F [X : ✲]) [Y : ✲]) : ✲] = ΛA.ΛB.θf.λx.[(f [x : A]) : B] \
+      \let Either : θF.ΛX.ΛY.[((F [X : ✲]) [Y : ✲]) : ✲] = ΛA.ΛB.θself.λP.λl.λr. \
       \  [(((self P) \
       \     λa.[(l [a : A]) : (P (((left A) B) a))]) \
       \     λb.[(r [b : B]) : (P (((right A) B) b))]) \
       \   : (P self)] \
       \let left : ΛA.ΛB.((Hom A) ((Either A) B)) = λA.λB.λa.λP.λl.λr.(l a) \
       \let right : ΛA.ΛB.((Hom B) ((Either A) B)) = λA.λB.λb.λP.λl.λr.(r b)"
+
+  src <- readFile "mu.tc"
+  report . parseModule $ src
+

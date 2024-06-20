@@ -4,10 +4,12 @@ module Syntax
 , KindP (..)
 , TermDefP (..)
 , TypeDefP (..)
+, KindDefP (..)
 , ModuleP (..)
 , emptyModuleP
 , addTermDefP
 , addTypeDefP
+, addKindDefP
 , toTerm
 , toType
 , toKind
@@ -44,6 +46,7 @@ data TypeP
 
 data KindP
   = KThetP Name TypeP
+  | KRefP Name
   | KStarP
   deriving Show
 
@@ -56,15 +59,22 @@ data TermDefP = TermDefP Name TypeP TermP
 
 data TypeDefP = TypeDefP Name KindP TypeP
 
+data KindDefP = KindDefP Name KindP
+
 data ModuleP = ModuleP
   { termDefsP :: Map Name TermDefP
   , typeDefsP :: Map Name TypeDefP
+  , kindDefsP :: Map Name KindDefP
   , nameDefsP :: [Name]
   }
 
 emptyModuleP :: ModuleP
-emptyModuleP =
-  ModuleP { termDefsP = Data.Map.empty, typeDefsP = Data.Map.empty, nameDefsP = [] }
+emptyModuleP = ModuleP
+  { termDefsP = Data.Map.empty
+  , typeDefsP = Data.Map.empty
+  , kindDefsP = Data.Map.empty
+  , nameDefsP = []
+  }
 
 addTermDefP :: TermDefP -> ModuleP -> ModuleP
 addTermDefP def@(TermDefP x _ _) m =
@@ -74,16 +84,20 @@ addTypeDefP :: TypeDefP -> ModuleP -> ModuleP
 addTypeDefP def@(TypeDefP x _ _) m =
   m { typeDefsP = Data.Map.insert x def (typeDefsP m), nameDefsP = x : nameDefsP m }
 
+addKindDefP :: KindDefP -> ModuleP -> ModuleP
+addKindDefP def@(KindDefP x _) m =
+  m { kindDefsP = Data.Map.insert x def (kindDefsP m), nameDefsP = x : nameDefsP m }
+
 toModule :: ModuleP -> Module
 toModule m = Module
   { termDefs = fmap toTermDef (termDefsP m)
   , typeDefs = fmap toTypeDef (typeDefsP m)
+  , kindDefs = fmap (\(KindDefP x k) -> KindDef x (toKind k)) (kindDefsP m)
   , nameDefs = nameDefsP m
   }
   where
     toTermDef (TermDefP x t trm) = TermDef x (toType t) (toTerm trm)
     toTypeDef (TypeDefP x k typ) = TypeDef x (toKind k) (toType typ)
-
 
 termVarOrRef :: Names -> Name -> Term
 termVarOrRef ns x =
@@ -130,7 +144,8 @@ kindOfP :: Names -> KindP -> Kind
 kindOfP ns k =
   case k of
   KThetP x t -> KThet x (typeOfP (ns { types = x : types ns }) t)
-  KStarP -> KStar
+  KRefP x -> KRef x
+  KStarP -> KThet (name "T") (TVar (name "T") 0)
 
 toTerm :: TermP -> Term
 toTerm = termOfP (Names [] [])

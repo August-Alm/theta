@@ -21,21 +21,21 @@ import Syntax
 %error { parseError }
 
 %token
-  let   { TokenLet }
-  lam   { TokenTermLambda }
-  Lam   { TokenTypeLambda }
-  the   { TokenTheta }
-  var   { TokenTermVar $$ }
-  Var   { TokenTypeVar $$ }
-  '='   { TokenEqual }  
-  ':'   { TokenColon }
-  ';'   { TokenSemicolon }
-  '.'   { TokenDot }
-  '✲'   { TokenStar }
-  '('   { TokenOP }
-  ')'   { TokenCP }
-  '['   { TokenOB }
-  ']'   { TokenCB }
+  let    { TokenLet }
+  lam    { TokenTermLambda }
+  Lam    { TokenTypeLambda }
+  the    { TokenTheta }
+  var    { TokenTermVar $$ }
+  Var    { TokenTypeVar $$ }
+  '='    { TokenEqual }  
+  ':'    { TokenColon }
+  ';'    { TokenSemicolon }
+  '.'    { TokenDot }
+  '('    { TokenOP }
+  ')'    { TokenCP }
+  '['    { TokenOB }
+  ']'    { TokenCB }
+  '✲'    { TokenStar }
 
 %%
 
@@ -63,6 +63,7 @@ type
 kind
   : '✲'                         { KStarP }
   | the Var '.' type            { KThetP (name $2) $4 }
+  | var                         { KRefP (name $1) }
 
 termDef
   : let var ':' type '=' term   { TermDefP (name $2) $4 $6 }
@@ -70,10 +71,14 @@ termDef
 typeDef
   : let Var ':' kind '=' type   { TypeDefP (name $2) $4 $6 }
 
+kindDef
+  : let var '=' kind          { KindDefP (name $2) $4 }
+
 module
   :                             { emptyModuleP }
   | module termDef              { addTermDefP $2 $1 }
   | module typeDef              { addTypeDefP $2 $1 }
+  | module kindDef              { addKindDefP $2 $1 }
 
 {
 parseError :: [Token] -> a

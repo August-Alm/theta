@@ -1,0 +1,33 @@
+let kfun = θF.ΛX.[(F [X : ✲]) : ✲]
+
+let kbif = θH.ΛX.ΛY.[((H [X : ✲]) [Y : ✲]) : ✲]
+
+let kext = θA.ΛF.ΛX.[((A [F : θF.ΛX.[(F [X : ✲]) : ✲]]) [X : ✲]) : ✲]
+
+let kalg = θA.ΛF.ΛX.[((A [F : θF.ΛX.[(F [X : ✲]) : ✲]]) [X : ✲]) : ✲]
+
+let Hom : kbif
+  = ΛA.ΛB.θf.λx.[(f [x : [A : ✲]]) : [B : ✲]]
+
+let FMap : ✲
+  = ΛF.ΛX.ΛY.((Hom ((Hom X) Y)) ((Hom (F X)) (F Y)))
+
+let H : kbif = Hom
+
+let hmap : ΛA.(FMap (H A))
+  = λA.λX.λY.λf.λg.λa.(f (g a))
+
+let Alg : kalg
+  = ΛF.ΛX.((Hom (F X)) X)
+
+let Free : kext
+  = ΛF.ΛX.((Hom ((Alg F) X)) X)
+
+let Fold : kext
+  = ΛF.ΛX.((Hom ((Alg F) X)) ((Hom (Free F)) X))
+
+let fold : Fold
+  = λF.λX.λk.λt.((t X) k)
+  
+let in : ΛF.((Hom (FMap F)) ((Hom (F (Free F))) (Free F)))
+  = λF.λfmap.λs.λX.λk.(k ((((fmap (Free F)) X) (((fold F) X) k)) s))

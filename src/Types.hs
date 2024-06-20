@@ -10,11 +10,14 @@ module Types
 , KindH (..)
 , TermDef (..)
 , TypeDef (..)
+, KindDef (..)
 , Module (..)
 , getTermDef
 , getTypeDef
+, getKindDef
 , addTermDef
 , addTypeDef
+, addKindDef
 , emptyModule
 ) where
 
@@ -75,13 +78,13 @@ instance Show Type where
 
 -- | A kind in Theta Calculus.
 data Kind
-  = KStar  -- ✲
+  = KRef Name
   | KThet Name Type  -- θX.T
 
 instance Show Kind where
   show k =
     case k of
-    KStar -> "✲"
+    KRef x -> unpack x
     KThet x t -> "θ" ++ unpack x ++ "." ++ show t
 
 -- | Higher-order representation of terms.
@@ -107,7 +110,7 @@ data TypeH
 
 -- | Higher-order representation of kinds.
 data KindH
-  = KStarH
+  = KRefH Name
   | KThetH Name (TypeH -> TypeH)
 
 -- | A top-level term definition.
@@ -116,23 +119,34 @@ data TermDef = TermDef Name Type Term
 -- | A top-level type definition.
 data TypeDef = TypeDef Name Kind Type
 
+-- | A top-level kind definition.
+data KindDef = KindDef Name Kind
+
 -- | A module is a collection of term and type definitions. Also keeps track
 -- of the names of the definitions in the reverse order they were added.
 data Module = Module
   { termDefs :: Map Name TermDef
   , typeDefs :: Map Name TypeDef
+  , kindDefs :: Map Name KindDef
   , nameDefs :: [Name]
   }
 
 emptyModule :: Module
-emptyModule =
-  Module { termDefs = Data.Map.empty, typeDefs = Data.Map.empty, nameDefs = [] }
+emptyModule = Module
+  { termDefs = Data.Map.empty
+  , typeDefs = Data.Map.empty
+  , kindDefs = Data.Map.empty
+  , nameDefs = []
+  }
 
 getTermDef :: Name -> Module -> Maybe TermDef
 getTermDef x m = Data.Map.lookup x (termDefs m)
 
 getTypeDef :: Name -> Module -> Maybe TypeDef
 getTypeDef x m = Data.Map.lookup x (typeDefs m)
+
+getKindDef :: Name -> Module -> Maybe KindDef
+getKindDef x m = Data.Map.lookup x (kindDefs m)
 
 addTermDef :: TermDef -> Module -> Module
 addTermDef def@(TermDef x _ _) m =
@@ -141,3 +155,7 @@ addTermDef def@(TermDef x _ _) m =
 addTypeDef :: TypeDef -> Module -> Module
 addTypeDef def@(TypeDef x _ _) m =
   m { typeDefs = Data.Map.insert x def (typeDefs m), nameDefs = x : nameDefs m }
+
+addKindDef :: KindDef -> Module -> Module
+addKindDef def@(KindDef x _) m =
+  m { kindDefs = Data.Map.insert x def (kindDefs m), nameDefs = x : nameDefs m }
