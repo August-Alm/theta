@@ -15,19 +15,23 @@ The Theta Calculus distinguishes terms, types and kinds on a syntactic level (no
 The small-step reduction rules are:
 
 1. (λx.t u) -> t{x := u}
-2. λx.(t x) -> t
-3. (θx.t u) -> θx.(t u)
-4. (θx.t U) -> θx.(t U)
-5. [t : θy.u] -> u{y := t}
-6. [T : θY.U] -> U{Y := T}
-7. [λx.t : Λx.U] -> λx.[t : U]
-8. [λX.t : ΛX.U] -> λX.[t : U]
-9. [t : Λx.U] -> λx.[(t x) : U]
-10. [t : ΛX.U] -> λX.[(t X) : U]
-11. [[t : T] : U] when T ~ U -> t
-12. [[T : κ] κ'] when κ ~ κ' -> T
+2. (λX.t U) -> t{X := U}
+3. (Λx.T u) -> T{x := u}
+4. (ΛX.T U) -> T{X := U}
+5. λx.(t x) -> t
+6. λX.(t X) -> t
+7. (θx.t u) -> θx.(t u)
+8. (θx.t U) -> θx.(t U)
+9. [t : θy.u] -> u{y := t}
+10. [T : θY.U] -> U{Y := T}
+11. [λx.t : Λx.U] -> λx.[t : U]
+12. [λX.t : ΛX.U] -> λX.[t : U]
+13. [t : Λx.U] -> λx.[(t x) : U]
+14. [t : ΛX.U] -> λX.[(t X) : U]
+15. [[t : T] : U] when T ~ U -> t
+16. [[T : κ] κ'] when κ ~ κ' -> T
 
-7 takes precedence over 9 and 8 over 10. (One can regard 9 and 10 as subsumed by 7 and 8, if one first eta-expands.)
+11 takes precedence over 13 and 12 over 14. (One can regard 13 and 14 as subsumed by 11 and 12, if one first eta-expands.)
 
 __Examples and discussion__
 
