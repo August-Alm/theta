@@ -27,6 +27,8 @@ The small-step reduction rules are:
 11. [[t : T] : U] when T ~ U -> t
 12. [[T : κ] κ'] when κ ~ κ' -> T
 
+7 takes precedence over 9 and 8 over 10. (One can regard 9 and 10 as subsumed by 7 and 8, if one first eta-expands.)
+
 __Examples and discussion__
 
 An ordinary typing statement "t : T" is given the operational meaning "t and [t : T] are equivalent". As a first, trivial but still interesting example, let
