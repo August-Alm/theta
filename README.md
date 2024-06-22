@@ -29,9 +29,10 @@ The small-step reduction rules are:
 13. [t : Λx.U] -> λx.[(t x) : U]
 14. [t : ΛX.U] -> λX.[(t X) : U]
 15. [[t : T] : U] when T ~ U -> t
-16. [[T : κ] κ'] when κ ~ κ' -> T
+16. [[T : κ] : κ'] when κ ~ κ' -> T
 
 11 takes precedence over 13 and 12 over 14. (One can regard 13 and 14 as subsumed by 11 and 12, if one first eta-expands.)
+Rules 15 and 16 only apply if no other rules apply.
 
 __Examples and discussion__
 
@@ -69,6 +70,5 @@ __The interpreter__
 
 The interpreter adds top-level definitions (that can be referenced in other top-level definitions) and syntax sugar for local let-bindings. Reduction is call-by-value.
 
-__TODOs__
-
-Prove Church-Rosser for the calculus. Prove formally the claims about faithfully modelling the type semantics of λΠ-calculus. Add the possibility to have recursive definitions (giving access to inductive encodings for types like lists). Investigate how techniques for sharing, which are crucial for fast lambda reduction, can be extended to optimized reduction engines of the Theta Calculus. Ponder if the calculus would be suitable as a core language for an optionally typed Lisp, or as an intermediate language of a theorem prover.
+__TODO__
+Formalise the reduction rules with more rigour. Prove formally the claims about faithfully modelling the type semantics of λΠ-calculus. Add the possibility to have recursive definitions (giving access to inductive encodings for types like lists). Investigate how techniques for sharing, which are crucial for fast lambda reduction, can be extended to optimized reduction engines of the Theta Calculus. Ponder if the calculus would be suitable as a core language for an optionally typed Lisp, or as an intermediate language of a theorem prover.
